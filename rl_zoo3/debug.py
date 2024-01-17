@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import sys
+import time
 
 import numpy as np
 import torch as th
@@ -21,6 +22,7 @@ def enjoy() -> None:  # noqa: C901
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", help="environment ID", type=EnvironmentName, default="CartPole-v1")
     parser.add_argument("-f", "--folder", help="Log folder", type=str, default="rl-trained-agents")
+    parser.add_argument("-s", "--save-folder", help="Save folder", type=str, default="/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer")
     parser.add_argument("--algo", help="RL Algorithm", default="ppo", type=str, required=False, choices=list(ALGOS.keys()))
     parser.add_argument("-n", "--n-timesteps", help="number of timesteps", default=1000, type=int)
     parser.add_argument("--num-threads", help="Number of threads for PyTorch (-1 to use default)", default=-1, type=int)
@@ -199,27 +201,30 @@ def enjoy() -> None:  # noqa: C901
     import numpy as np
     debuger_sim = DebugSimulation(p)
 
-    record_size = 10000
-    print(env.observation_space)
+    record_size = 100000
     
     replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
 
-    for i in range(record_size):
-        action = np.array(debuger_sim.step()).reshape((1,6))
-        obs, reward, done, infos = env.step(action)
-        replay_buffer.add(old_obs,obs, action, reward, done, infos)
-        old_obs = obs
-        if done:
-            old_obs = env.reset()
-    
-    import pickle
-    # Save the replay buffer to a pickle file
-    save_path = '/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
-    with open(save_path, 'wb') as f:
-        pickle.dump(replay_buffer, f)
+    try:
+        while True:
+            time.sleep(1.0 / 240.0)
+            action = np.array(debuger_sim.step()).reshape((1,6))
+            obs, reward, done, infos = env.step(action)
+            print(f"{reward}, {done}")
+            replay_buffer.add(old_obs,obs, action, reward, done, infos)
+            old_obs = obs
+            if done:
+                old_obs = env.reset()
+    except KeyboardInterrupt or SystemExit:
+        print("EXITING")
+        import pickle
+        # Save the replay buffer to a pickle file
+        save_path = f"{args.save_folder}/replay_buffer.pkl"#/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
+        with open(save_path, 'wb') as f:
+            pickle.dump(replay_buffer, f)
 
-    
-    env.close()
+        
+        env.close()
 
 import time
 class DebugSimulation():
