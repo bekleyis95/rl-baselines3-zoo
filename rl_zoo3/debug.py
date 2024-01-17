@@ -193,88 +193,116 @@ def enjoy() -> None:  # noqa: C901
         kwargs["env"] = env
 
     model = ALGOS[algo].load(model_path, custom_objects=custom_objects, device=args.device, **kwargs)
-    obs = env.reset()
+    old_obs = env.reset()
+    import pybullet as p
+    from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
+    import numpy as np
+    debuger_sim = DebugSimulation(p)
 
-    # Deterministic by default except for atari games
-    stochastic = args.stochastic or (is_atari or is_minigrid) and not args.deterministic
-    deterministic = not stochastic
+    record_size = 10000
+    print(env.observation_space)
+    
+    replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
 
-    episode_reward = 0.0
-    episode_rewards, episode_lengths = [], []
-    ep_len = 0
-    # For HER, monitor success rate
-    successes = []
-    lstm_states = None
-    episode_start = np.ones((env.num_envs,), dtype=bool)
+    for i in range(record_size):
+        action = np.array(debuger_sim.step()).reshape((1,6))
+        obs, reward, done, infos = env.step(action)
+        replay_buffer.add(old_obs,obs, action, reward, done, infos)
+        old_obs = obs
+        if done:
+            old_obs = env.reset()
+    
+    import pickle
+    # Save the replay buffer to a pickle file
+    save_path = '/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
+    with open(save_path, 'wb') as f:
+        pickle.dump(replay_buffer, f)
 
-    generator = range(args.n_timesteps)
-    if args.progress:
-        if tqdm is None:
-            raise ImportError("Please install tqdm and rich to use the progress bar")
-        generator = tqdm(generator)
-
-    try:
-        for _ in generator:
-            action, lstm_states = model.predict(
-                obs,  # type: ignore[arg-type]
-                state=lstm_states,
-                episode_start=episode_start,
-                deterministic=deterministic,
-            )
-            obs, reward, done, infos = env.step(action)
-
-            episode_start = done
-
-            if not args.no_render:
-                env.render("human")
-
-            episode_reward += reward[0]
-            ep_len += 1
-
-            if args.n_envs == 1:
-                # For atari the return reward is not the atari score
-                # so we have to get it from the infos dict
-                if is_atari and infos is not None and args.verbose >= 1:
-                    episode_infos = infos[0].get("episode")
-                    if episode_infos is not None:
-                        print(f"Atari Episode Score: {episode_infos['r']:.2f}")
-                        print("Atari Episode Length", episode_infos["l"])
-
-                if done and not is_atari and args.verbose > 0:
-                    # NOTE: for env using VecNormalize, the mean reward
-                    # is a normalized reward when `--norm_reward` flag is passed
-                    print(f"Episode Reward: {episode_reward:.2f}")
-                    print("Episode Length", ep_len)
-                    print(f"Current success rate: {100 * np.mean(successes):.2f}%")
-                    episode_rewards.append(episode_reward)
-                    episode_lengths.append(ep_len)
-                    episode_reward = 0.0
-                    ep_len = 0
-
-                # Reset also when the goal is achieved when using HER
-                if done and infos[0].get("is_success") is not None:
-                    if args.verbose > 1:
-                        print("Success?", infos[0].get("is_success", False))
-
-                    if infos[0].get("is_success") is not None:
-                        successes.append(infos[0].get("is_success", False))
-                        episode_reward, ep_len = 0.0, 0
-
-    except KeyboardInterrupt:
-        pass
-
-    if args.verbose > 0 and len(successes) > 0:
-        print(f"Success rate: {100 * np.mean(successes):.2f}%")
-
-    if args.verbose > 0 and len(episode_rewards) > 0:
-        print(f"{len(episode_rewards)} Episodes")
-        print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
-
-    if args.verbose > 0 and len(episode_lengths) > 0:
-        print(f"Mean episode length: {np.mean(episode_lengths):.2f} +/- {np.std(episode_lengths):.2f}")
-
+    
     env.close()
 
+import time
+class DebugSimulation():
+    """TODO add docstring"""
+
+    def __init__(self, physics_engine):
+        """TODO add docstring"""
+        limit = 1
+        self._physics_engine = physics_engine
+        self.reset_button = physics_engine.addUserDebugParameter("reset", 1, 0, 1)
+        self.latest_reset = self._physics_engine.readUserDebugParameter(
+            self.reset_button
+        )
+        self.hand_pose = []
+        self.latest_finger_contacts = np.zeros(5)
+        self.hand_pose.append(
+            physics_engine.addUserDebugParameter("posX", -limit, limit, 0)
+        )
+        self.hand_pose.append(
+            physics_engine.addUserDebugParameter("posY", -limit, limit, 0)
+        )
+        self.hand_pose.append(
+            physics_engine.addUserDebugParameter("posZ", -limit, limit, 0)
+        )
+        self.hand_orientation = []
+        self.hand_orientation.append(
+            physics_engine.addUserDebugParameter("roll", -limit, limit, 0)
+        )
+        self.hand_orientation.append(
+            physics_engine.addUserDebugParameter("pitch", -limit, limit, 0)
+        )
+        self.hand_orientation.append(
+            physics_engine.addUserDebugParameter("yaw", -limit, limit, 0)
+        )
+
+        self.grasp_angles = []
+        for i in range(2):
+            self.grasp_angles.append(
+                physics_engine.addUserDebugParameter(
+                    f"grasp_angle_{i}", -1.0, 1.0, 0
+                )
+            )
+       
+
+    def get_current_grasp_angles(self):
+        grasp_angles = []
+        for i in range(len(self.grasp_angles)):
+            grasp_angles.append(self._physics_engine.readUserDebugParameter(self.grasp_angles[i]))
+        return grasp_angles
+    
+    def simulate(self):
+        """TODO add docstring"""
+        while True:
+            self.step()
+            self._physics_engine.stepSimulation()
+            # self._table_workspace.step()
+            time.sleep(1.0 / 240.0)
+
+    def step(self):
+        """TODO add docstring"""
+        if (
+            self._physics_engine.readUserDebugParameter(self.reset_button)
+            > self.latest_reset
+        ):
+            self.latest_reset = self._physics_engine.readUserDebugParameter(
+                self.reset_button
+            )
+            self.reset()
+
+        target_pose = []
+        target_orientation = []
+        for pose in self.hand_pose:
+            target_pose.append(self._physics_engine.readUserDebugParameter(pose))
+        for orientation in self.hand_orientation:
+            target_orientation.append(
+                self._physics_engine.readUserDebugParameter(orientation)
+            )
+        
+        action = []
+        action.extend(target_pose[0:3])
+        action.extend([target_orientation[0]])
+        action.extend(self.get_current_grasp_angles())
+        return action
 
 if __name__ == "__main__":
     enjoy()

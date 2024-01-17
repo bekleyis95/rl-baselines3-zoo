@@ -31,3 +31,31 @@ __all__ = [
     "get_wrapper_class",
     "linear_schedule",
 ]
+
+import gymnasium as gym
+
+def register(id, *args, **kvargs):
+    return gym.envs.registration.register(id, *args, **kvargs)
+
+import sys
+sys.path.append(f"{os.environ['TEKKEN_PATH']}/src")
+register(
+    id='StageTwoTekkenEnv-v1',
+    entry_point='simulations.stage_two_tekken_env:StageTwoTekkenEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)
+
+register(
+    id='StageTwoRobotiqEnv-v1',
+    entry_point='simulations.stage_two_robotiq_env:StageTwoRobotiqEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)
+
+register(
+    id='StageThreeTekkenEnv-v1',
+    entry_point='simulations.stage_three_tekken_env:StageThreeTekkenEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)

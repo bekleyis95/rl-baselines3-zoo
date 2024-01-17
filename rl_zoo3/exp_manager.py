@@ -509,7 +509,7 @@ class ExperimentManager:
                 eval_freq=self.eval_freq,
                 deterministic=self.deterministic_eval,
             )
-
+            
             self.callbacks.append(eval_callback)
 
     @staticmethod
