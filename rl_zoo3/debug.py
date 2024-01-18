@@ -18,7 +18,7 @@ from rl_zoo3.load_from_hub import download_from_hub
 from rl_zoo3.utils import StoreDict, get_model_path
 
 
-def enjoy() -> None:  # noqa: C901
+def debug() -> None:  # noqa: C901
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", help="environment ID", type=EnvironmentName, default="CartPole-v1")
     parser.add_argument("-f", "--folder", help="Log folder", type=str, default="rl-trained-agents")
@@ -219,7 +219,7 @@ def enjoy() -> None:  # noqa: C901
         print("EXITING")
         import pickle
         # Save the replay buffer to a pickle file
-        save_path = f"{args.save_folder}/replay_buffer.pkl"#/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
+        save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"#/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
         with open(save_path, 'wb') as f:
             pickle.dump(replay_buffer, f)
 
@@ -310,4 +310,4 @@ class DebugSimulation():
         return action
 
 if __name__ == "__main__":
-    enjoy()
+    debug()
