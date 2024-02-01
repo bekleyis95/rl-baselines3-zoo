@@ -67,3 +67,18 @@ register(
     max_episode_steps=5000,
     reward_threshold=2000.0
 )
+
+
+register(
+    id='StageThreeTekkenEnv-v3',
+    entry_point='simulations.stage_three_tekken_env_v3:StageThreeTekkenEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)
+
+register(
+    id='StageThreeTekkenEnv-v4',
+    entry_point='simulations.stage_three_tekken_env_v4:StageThreeTekkenEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)
