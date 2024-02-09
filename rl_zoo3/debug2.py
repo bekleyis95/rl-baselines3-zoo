@@ -157,6 +157,7 @@ def debug() -> None:  # noqa: C901
         env_kwargs.update(args.env_kwargs)
 
     log_dir = args.reward_log if args.reward_log != "" else None
+
     hyperparams["normalize"] = False
     hyperparams["normalize_kwargs"] = {"norm_obs": False, "norm_reward": False}
     env = create_test_env(
@@ -198,35 +199,62 @@ def debug() -> None:  # noqa: C901
     model = ALGOS[algo].load(model_path, custom_objects=custom_objects, device=args.device, **kwargs)
     old_obs = env.reset()
     import pybullet as p
+    import pickle
     from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
+    from stable_baselines3.common.buffers import ReplayBuffer
     import numpy as np
     debuger_sim = DebugSimulation(p)
 
     record_size = 5000
+    file_paths = []
+    directory_path = '/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4'
+    for filename in os.listdir(directory_path):
+        if filename.endswith(".pkl"):
+            file_path = os.path.join(directory_path, filename)
+            file_paths.append(file_path)
     
-    replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
+    replay_buffer = HerReplayBuffer(36090, env.observation_space, env.action_space, env)
+    plain_replay_buffer = ReplayBuffer(36090, env.observation_space["observation"], env.action_space)# ReplayBuffer(, env.observation_space, env.action_space)
+    counter = 0
+    for file in file_paths:
+        counter +=1 
+        print(counter)
+        with open(file_path, 'rb') as file:
+            loaded_object = pickle.load(file)
+            for i in range(loaded_object.pos):
+                replay_buffer.add(
+                    {
+                        "observation": loaded_object.observations["observation"][i],
+                        "achieved_goal": loaded_object.observations["achieved_goal"][i],
+                        "desired_goal": loaded_object.observations["desired_goal"][i],
+                    },
+                    {
+                        "observation": loaded_object.next_observations["observation"][i],
+                        "achieved_goal": loaded_object.next_observations["achieved_goal"][i],
+                        "desired_goal": loaded_object.next_observations["desired_goal"][i],
+                    },
+                    loaded_object.actions[i],
+                    loaded_object.rewards[i],
+                    loaded_object.dones[i],
+                    loaded_object.infos[i]
+                )
+                plain_replay_buffer.add(
+                    loaded_object.observations["observation"][i],
+                    loaded_object.next_observations["observation"][i],
+                    loaded_object.actions[i],
+                    loaded_object.rewards[i],
+                    loaded_object.dones[i],
+                    loaded_object.infos[i]
+                )
+    save_path = f"/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4/replay_buffer_40.pkl"
+    with open(save_path, 'wb') as f:
+        pickle.dump(replay_buffer, f)
 
-    try:
-        while True:
-            time.sleep(1.0 / 240.0)
-            action = np.array(debuger_sim.step()).reshape((1,6))
-            obs, reward, done, infos = env.step(action)
-            # print(f"{reward}, {done}")
-            replay_buffer.add(old_obs,obs, action, reward, done, infos)
-            old_obs = obs
-            if done and infos[0]["is_success"]:
-                #save the episode
-                import pickle
-                # Save the replay buffer to a pickle file
-                save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"
-                with open(save_path, 'wb') as f:
-                    pickle.dump(replay_buffer, f)
-            if done:
-                old_obs = env.reset()
-                replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
-    except KeyboardInterrupt or SystemExit:
-        print("EXITING")        
-        env.close()
+    save_path = f"/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4/plain_replay_buffer_40.pkl"
+    with open(save_path, 'wb') as f:
+        pickle.dump(plain_replay_buffer, f)
+
+   
 
 import time
 class DebugSimulation():

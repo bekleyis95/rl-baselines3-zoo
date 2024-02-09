@@ -74,6 +74,7 @@ class ExperimentManager:
         save_freq: int = -1,
         hyperparams: Optional[Dict[str, Any]] = None,
         env_kwargs: Optional[Dict[str, Any]] = None,
+        env_kwargs_path: Optional[str] = None,
         trained_agent: str = "",
         optimize_hyperparameters: bool = False,
         storage: Optional[str] = None,
@@ -113,6 +114,17 @@ class ExperimentManager:
 
         self.config = config or str(default_path / f"hyperparams/{self.algo}.yml")
         self.env_kwargs: Dict[str, Any] = {} if env_kwargs is None else env_kwargs
+        self.env_kwargs_path = env_kwargs_path
+        print(env_kwargs_path)
+        if env_kwargs_path is not None:
+            print("env_kwargs_path is not None")
+            if os.path.isfile(env_kwargs_path):
+                with open(env_kwargs_path) as f:
+                    loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
+                    print(loaded_args)
+                    if loaded_args["env_kwargs"] is not None:
+                        self.env_kwargs = loaded_args["env_kwargs"]
+
         self.n_timesteps = n_timesteps
         self.normalize = False
         self.normalize_kwargs: Dict[str, Any] = {}
@@ -275,6 +287,14 @@ class ExperimentManager:
         # Save hyperparams
         with open(os.path.join(self.params_path, "config.yml"), "w") as f:
             yaml.dump(saved_hyperparams, f)
+        
+        if self.env_kwargs_path is not None:
+            with open(self.env_kwargs_path) as f:
+                loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
+
+            # Write the content to a new YAML file at the destination
+            with open(os.path.join(self.params_path, "env_args.yml"), "w") as f:
+                yaml.dump(loaded_args, f)
 
         # save command line arguments
         with open(os.path.join(self.params_path, "args.yml"), "w") as f:

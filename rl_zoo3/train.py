@@ -115,6 +115,8 @@ def train() -> None:
     parser.add_argument(
         "--env-kwargs", type=str, nargs="+", action=StoreDict, help="Optional keyword argument to pass to the env constructor"
     )
+    parser.add_argument("--env-kwargs-path", type=str, default=None)#, action=StoreDict, help="Optional keyword argument to pass to the env constructor"
+    
     parser.add_argument(
         "-params",
         "--hyperparams",
@@ -226,6 +228,7 @@ def train() -> None:
         args.save_freq,
         args.hyperparams,
         args.env_kwargs,
+        args.env_kwargs_path,
         args.trained_agent,
         args.optimize_hyperparameters,
         args.storage,

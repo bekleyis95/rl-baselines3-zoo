@@ -157,8 +157,7 @@ def debug() -> None:  # noqa: C901
         env_kwargs.update(args.env_kwargs)
 
     log_dir = args.reward_log if args.reward_log != "" else None
-    hyperparams["normalize"] = False
-    hyperparams["normalize_kwargs"] = {"norm_obs": False, "norm_reward": False}
+
     env = create_test_env(
         env_name.gym_id,
         n_envs=args.n_envs,
@@ -197,35 +196,41 @@ def debug() -> None:  # noqa: C901
 
     model = ALGOS[algo].load(model_path, custom_objects=custom_objects, device=args.device, **kwargs)
     old_obs = env.reset()
+
     import pybullet as p
-    from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
+    from stable_baselines3.common.buffers import ReplayBuffer
     import numpy as np
     debuger_sim = DebugSimulation(p)
 
-    record_size = 5000
-    
-    replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
+    record_size = 100000
+
+    print("============================")
+    print(env.observation_space["observation"])
+    print(env.action_space)    
+    print("============================")
+    input()
+
+    replay_buffer = ReplayBuffer(record_size, env.observation_space["observation"], env.action_space)
 
     try:
         while True:
             time.sleep(1.0 / 240.0)
             action = np.array(debuger_sim.step()).reshape((1,6))
             obs, reward, done, infos = env.step(action)
-            # print(f"{reward}, {done}")
-            replay_buffer.add(old_obs,obs, action, reward, done, infos)
+            print(f"{reward}, {done}")
+            replay_buffer.add(old_obs["observation"],obs["observation"], action, reward, done, infos)
             old_obs = obs
-            if done and infos[0]["is_success"]:
-                #save the episode
-                import pickle
-                # Save the replay buffer to a pickle file
-                save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"
-                with open(save_path, 'wb') as f:
-                    pickle.dump(replay_buffer, f)
             if done:
                 old_obs = env.reset()
-                replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
     except KeyboardInterrupt or SystemExit:
-        print("EXITING")        
+        print("EXITING")
+        import pickle
+        # Save the replay buffer to a pickle file
+        save_path = f"{args.save_folder}/plain_rb_{args.env}_{int(time.time() * 1e3)}.pkl"#/home/deniz.seven/Desktop/Thesis_Documents/replay_buffer/replay_buffer.pkl'
+        with open(save_path, 'wb') as f:
+            pickle.dump(replay_buffer, f)
+
+        
         env.close()
 
 import time
