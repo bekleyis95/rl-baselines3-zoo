@@ -15,7 +15,7 @@ from stable_baselines3.common.utils import set_random_seed
 # Register custom envs
 import rl_zoo3.import_envs  # noqa: F401 pytype: disable=import-error
 from rl_zoo3.exp_manager import ExperimentManager
-from rl_zoo3.utils import ALGOS, StoreDict
+from rl_zoo3.utils import ALGOS, StoreDict, has_uncommitted_changes
 
 
 def train() -> None:
@@ -154,7 +154,11 @@ def train() -> None:
     )
 
     args = parser.parse_args()
-
+    
+    if has_uncommitted_changes():
+       print("THERE IS UNCOMMITED CHANGES, CANT TRAIN")
+       return 
+    
     # Going through custom gym packages to let them register in the global registory
     for env_module in args.gym_packages:
         importlib.import_module(env_module)

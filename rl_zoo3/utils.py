@@ -294,6 +294,26 @@ def create_test_env(
             env = VecFrameStack(env, n_stack)
     return env
 
+def has_uncommitted_changes():
+    from git import Repo
+    repo_path = os.environ['TEKKEN_PATH']
+    try:
+        repo = Repo(repo_path)
+        return repo.is_dirty() or repo.untracked_files
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+def get_latest_commit_hash():
+    from git import Repo
+    repo_path = os.environ['TEKKEN_PATH']
+    try:
+        repo = Repo(repo_path)
+        latest_commit = repo.head.commit
+        return latest_commit.hexsha
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
 
 def linear_schedule(initial_value: Union[float, str]) -> Callable[[float], float]:
     """

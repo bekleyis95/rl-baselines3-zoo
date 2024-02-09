@@ -291,7 +291,8 @@ class ExperimentManager:
         if self.env_kwargs_path is not None:
             with open(self.env_kwargs_path) as f:
                 loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
-
+            from rl_zoo3.utils import get_latest_commit_hash
+            loaded_args["commit_hash"] = get_latest_commit_hash()
             # Write the content to a new YAML file at the destination
             with open(os.path.join(self.params_path, "env_args.yml"), "w") as f:
                 yaml.dump(loaded_args, f)
