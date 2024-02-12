@@ -155,6 +155,15 @@ def debug() -> None:  # noqa: C901
     # overwrite with command line arguments
     if args.env_kwargs is not None:
         env_kwargs.update(args.env_kwargs)
+    
+    env_args_path = os.path.join(log_path, env_name, "env_args.yml")
+    if os.path.isfile(env_args_path):
+        with open(env_args_path) as f:
+            loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
+            if loaded_args["env_kwargs"] is not None:
+                env_kwargs.update(loaded_args["env_kwargs"])
+
+    print(env_kwargs)
 
     log_dir = args.reward_log if args.reward_log != "" else None
     hyperparams["normalize"] = False
