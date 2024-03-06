@@ -156,6 +156,15 @@ def debug() -> None:  # noqa: C901
     if args.env_kwargs is not None:
         env_kwargs.update(args.env_kwargs)
 
+    env_args_path = os.path.join(log_path, env_name, "env_args.yml")
+    if os.path.isfile(env_args_path):
+        with open(env_args_path) as f:
+            loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
+            if loaded_args["env_kwargs"] is not None:
+                env_kwargs.update(loaded_args["env_kwargs"])
+
+    print(env_kwargs)
+    
     log_dir = args.reward_log if args.reward_log != "" else None
 
     hyperparams["normalize"] = False
@@ -207,7 +216,7 @@ def debug() -> None:  # noqa: C901
 
     record_size = 5000
     file_paths = []
-    directory_path = '/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4'
+    directory_path = '/home/deniz.seven/Desktop/kalpte'
     for filename in os.listdir(directory_path):
         if filename.endswith(".pkl"):
             file_path = os.path.join(directory_path, filename)
@@ -246,11 +255,11 @@ def debug() -> None:  # noqa: C901
                     loaded_object.dones[i],
                     loaded_object.infos[i]
                 )
-    save_path = f"/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4/replay_buffer_40.pkl"
+    save_path = f"/home/deniz.seven/Desktop/kalpte/stage2_replay_buffer_40.pkl"
     with open(save_path, 'wb') as f:
         pickle.dump(replay_buffer, f)
 
-    save_path = f"/home/deniz.seven/Desktop/Thesis_Documents/agent_recordings/Stage3_v4/plain_replay_buffer_40.pkl"
+    save_path = f"/home/deniz.seven/Desktop/kalpte/stage2_plain_replay_buffer_40.pkl"
     with open(save_path, 'wb') as f:
         pickle.dump(plain_replay_buffer, f)
 

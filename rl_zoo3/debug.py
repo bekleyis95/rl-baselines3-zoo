@@ -220,19 +220,20 @@ def debug() -> None:  # noqa: C901
             time.sleep(1.0 / 240.0)
             action = np.array(debuger_sim.step()).reshape((1,6))
             obs, reward, done, infos = env.step(action)
-            # print(f"{reward}, {done}")
+            yo= infos[0].get("is_success")
             replay_buffer.add(old_obs,obs, action, reward, done, infos)
             old_obs = obs
-            if done and infos[0]["is_success"]:
+            print(reward)
+            # if done and infos[0]["is_success"]:
                 #save the episode
-                import pickle
+                # import pickle
                 # Save the replay buffer to a pickle file
-                save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"
-                with open(save_path, 'wb') as f:
-                    pickle.dump(replay_buffer, f)
+                # save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"
+                # with open(save_path, 'wb') as f:
+                    # pickle.dump(replay_buffer, f)
             if done:
                 old_obs = env.reset()
-                replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
+                # replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
     except KeyboardInterrupt or SystemExit:
         print("EXITING")        
         env.close()
