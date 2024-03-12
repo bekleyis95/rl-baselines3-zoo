@@ -68,6 +68,13 @@ register(
 )
 
 register(
+    id='StageTwoTekkenEnv-v5',
+    entry_point='simulations.stage_two_tekken_env_v5:StageTwoTekkenEnv',
+    max_episode_steps=5000,
+    reward_threshold=2000.0
+)
+
+register(
     id='StageTwoRobotiqEnv-v1',
     entry_point='simulations.stage_two_robotiq_env:StageTwoRobotiqEnv',
     max_episode_steps=5000,

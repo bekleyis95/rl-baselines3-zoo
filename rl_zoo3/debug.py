@@ -231,8 +231,8 @@ def debug() -> None:  # noqa: C901
                 # save_path = f"{args.save_folder}/rb_{args.env}_{int(time.time() * 1e3)}.pkl"
                 # with open(save_path, 'wb') as f:
                     # pickle.dump(replay_buffer, f)
-            if done:
-                old_obs = env.reset()
+            # if done:
+                # old_obs = env.reset()
                 # replay_buffer = HerReplayBuffer(record_size, env.observation_space, env.action_space, env)
     except KeyboardInterrupt or SystemExit:
         print("EXITING")        
