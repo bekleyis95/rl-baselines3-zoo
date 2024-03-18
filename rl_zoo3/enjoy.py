@@ -23,6 +23,7 @@ def enjoy() -> None:  # noqa: C901
     parser.add_argument("-f", "--folder", help="Log folder", type=str, default="rl-trained-agents")
     parser.add_argument("--algo", help="RL Algorithm", default="ppo", type=str, required=False, choices=list(ALGOS.keys()))
     parser.add_argument("-n", "--n-timesteps", help="number of timesteps", default=1000, type=int)
+    parser.add_argument("--n-episodes", help="number of episodes", default=1000, type=int)
     parser.add_argument("--num-threads", help="Number of threads for PyTorch (-1 to use default)", default=-1, type=int)
     parser.add_argument("--n-envs", help="number of environments", default=1, type=int)
     parser.add_argument("--exp-id", help="Experiment ID (default: 0: latest, -1: no exp folder)", default=0, type=int)
@@ -121,8 +122,8 @@ def enjoy() -> None:  # noqa: C901
                 args.load_last_checkpoint,
             )
 
+    print(log_path)
     print(f"Loading {model_path}")
-
     # Off-policy algorithm only support one env for now
     off_policy_algos = ["qrdqn", "dqn", "ddpg", "sac", "her", "td3", "tqc"]
 
@@ -159,7 +160,6 @@ def enjoy() -> None:  # noqa: C901
                 env_kwargs.update(loaded_args["env_kwargs"])
 
     print(env_kwargs)
-    input()
 
     # overwrite with command line arguments
     if args.env_kwargs is not None:
@@ -217,7 +217,9 @@ def enjoy() -> None:  # noqa: C901
     successes = []
     lstm_states = None
     episode_start = np.ones((env.num_envs,), dtype=bool)
-
+    
+    episode_counter = 1
+    episode_end_reasons = {}
     generator = range(args.n_timesteps)
     if args.progress:
         if tqdm is None:
@@ -225,7 +227,7 @@ def enjoy() -> None:  # noqa: C901
         generator = tqdm(generator)
 
     try:
-        for _ in generator:
+        while episode_counter <= args.n_episodes:
             action, lstm_states = model.predict(
                 obs,  # type: ignore[arg-type]
                 state=lstm_states,
@@ -234,6 +236,10 @@ def enjoy() -> None:  # noqa: C901
             )
             obs, reward, done, infos = env.step(action)
 
+            if done:
+                episode_counter += 1
+                print(f"next episode : {episode_counter}")
+                
             episode_start = done
 
             if not args.no_render:
@@ -261,6 +267,15 @@ def enjoy() -> None:  # noqa: C901
                     episode_lengths.append(ep_len)
                     episode_reward = 0.0
                     ep_len = 0
+                    if infos[0].get("fail_reason"):
+                        reason = infos[0].get("fail_reason")
+                        print("=================")
+                        print(f"{episode_end_reasons}")
+                        print("=================")
+                        if episode_end_reasons.get(reason) is not None:
+                            episode_end_reasons[reason] += 1
+                        else:
+                            episode_end_reasons[reason] = 1
 
                 # Reset also when the goal is achieved when using HER
                 if done and infos[0].get("is_success") is not None:
@@ -283,6 +298,28 @@ def enjoy() -> None:  # noqa: C901
 
     if args.verbose > 0 and len(episode_lengths) > 0:
         print(f"Mean episode length: {np.mean(episode_lengths):.2f} +/- {np.std(episode_lengths):.2f}")
+
+    print(f"episodes end reasons {episode_end_reasons}")
+    evaluation = {}
+    evaluation["reasons"] = episode_end_reasons
+    evaluation["loaded_best"] = args.load_best
+    evaluation["loaded_checkpoint"] = args.load_checkpoint
+    evaluation["env_kwargs"] = env_kwargs
+
+
+    from datetime import datetime
+    import json    
+    # Get current timestamp
+    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    # File path to save the dictionary with current timestamp
+    file_path = f'{log_path}/evaluation_{current_time}.json'
+
+    # Save the dictionary to a JSON file
+    with open(file_path, 'w') as file:
+        json.dump(evaluation, file)
+
+    print("Dictionary saved to", file_path)
 
     env.close()
 
